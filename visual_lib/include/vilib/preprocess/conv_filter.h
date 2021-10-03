@@ -75,12 +75,12 @@ typedef enum conv_filter_border_type conv_filter_border_type_t;
 struct filter1x3 {
   float d[3];
 };
-typedef struct filter3x3 filter3x3_t;
+typedef struct filter1x3 filter1x3_t;
 
 struct filter3x3 {
   float d[9];
 };
-typedef struct filter1x3 filter1x3_t;
+typedef struct filter3x3 filter3x3_t;
 
 /**
  * Acquire the filter coefficients for the specified 3x3 filter

@@ -31,37 +31,30 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 
-include(CheckLanguage)
-check_language(CUDA)
-if (CMAKE_CUDA_COMPILER)
-  project(vilib VERSION 1.0.0 DESCRIPTION "fast cuda fast feature tracking" LANGUAGES CXX CUDA)
-else()
-  message(STATUS "CUDA not natively supported yet, will look for CUDA cmake package")
-  project(vilib VERSION 1.0.0 DESCRIPTION "fast cuda fast feature tracking" LANGUAGES CXX)
-endif()
+cmake_policy(SET CMP0091 NEW)
+cmake_policy(SET CMP0104 NEW)
+
+project(vilib VERSION 1.0.0 DESCRIPTION "fast cuda fast feature tracking" LANGUAGES CXX CUDA)
 
 include (CMakePrintHelpers)
 include (CMakePackageConfigHelpers)
 include (CPack)
 include (GNUInstallDirs)
 
-if (CMAKE_CUDA_COMPILER)
-else()
-   find_package(CUDA REQUIRED)
-   set(CUDA_LINK_LIBRARIES_KEYWORD PUBLIC)
-   cuda_select_nvcc_arch_flags(ARCH_FLAGS)
-   message(STATUS "Found CUDA ${CUDA_VERSION_STRING} at ${CUDA_TOOLKIT_ROOT_DIR}")
-endif()
-
-
-find_package(OpenCV REQUIRED COMPONENTS core)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc highgui features2d)
 find_package(Eigen3 REQUIRED)
+
+# Set CUDA architectures
+set(CMAKE_CUDA_ARCHITECTURES 32 50 52 60 62 70 72 75 80 86 CACHE STRING "CUDA architectures")
 
 option(BUILD_SHARED_LIBS "build shared libraries" ON)
 cmake_print_variables(BUILD_SHARED_LIBS)
-
+set(VILIB_LIB_TYPE SHARED)
+if(NOT ${BUILD_SHARED_LIBS})
+  set(VILIB_LIB_TYPE STATIC)
+endif()
 
 set(CUSTOM_OPENCV_PATH "" CACHE PATH "path to custom opencv version")
 
@@ -70,11 +63,7 @@ file(GLOB_RECURSE VILIB_SOURCES
   visual_lib/src/*.cu
 )
 
-if (CMAKE_CUDA_COMPILER)
-   add_library(vilib SHARED ${VILIB_SOURCES})
-else()
-   cuda_add_library(vilib SHARED ${VILIB_SOURCES})
-endif()
+add_library(vilib ${VILIB_LIB_TYPE} ${VILIB_SOURCES})
 
 # the PUBLIC keyword means that any targets linking to this
 # target also need that include directory. 
@@ -97,17 +86,30 @@ set_target_properties(vilib
   CXX_STANDARD 11
   CXX_STANDARD_REQUIRED YES
   CXX_EXTENSIONS OFF
-  LINK_WHAT_YOU_USE OFF         # switch to on to check for unnecessary links
+  LINK_WHAT_YOU_USE ON         # switch to on to check for unnecessary links
   POSITION_INDEPENDENT_CODE ON
   )
 
 target_link_libraries(vilib PUBLIC
-  opencv_core Eigen3::Eigen ${CUDA_LIBRARIES})
+  opencv_core
+  opencv_imgproc
+  opencv_highgui
+  opencv_features2d
+  Eigen3::Eigen
+  ${CUDA_LIBRARIES}
+)
 
 # Set different compiler options for cxx and nvcc
 
-set(cxx_options -Wall -Wextra -Werror -Wfatal-errors -ffast-math -fsee -fno-signed-zeros -fno-math-errno -funroll-loops -fno-finite-math-only -march=native -O3 -DNDEBUG)
+set(cxx_options -DNDEBUG)
 set(nvcc_options --device-w --ftz=true --prec-div=false --prec-sqrt=false --fmad=true --default-stream per-thread -O3 -DNDEBUG)
+
+# These options do not exist (or are different) for MSVC and could cause build failures
+if(MSVC)
+  # Append any MSVC CXX compile options wanted or needed
+else(MSVC)
+  list(APPEND cxx_options -Wall -Werror -Wextra -Wfatal-errors -ffast-math -fsee -fno-signed-zeros -fno-math-errno -funroll-loops -fno-finite-math-only -march=native -O3)
+endif()
 
 # the generator is only expanded if <COMPILE_LANGUAGE:FOO> evaluates to true
 

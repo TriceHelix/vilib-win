@@ -34,7 +34,7 @@
 
 #include <iostream>
 #include <iomanip>
-#include <sys/time.h>
+#include <chrono>
 #include "vilib/timer.h"
 
 namespace vilib {
@@ -64,9 +64,9 @@ void Timer::cont(void) {
 }
 
 double Timer::get_localtime_usec(void) const {
-  struct timeval t;
-  gettimeofday(&t, NULL);
-  return (double)t.tv_sec*1.0e6 + (double)t.tv_usec;
+  auto t = std::chrono::high_resolution_clock::now();
+  auto tusec = std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch());
+  return (double)tusec.count();
 }
 
 void Timer::reset(void) {

@@ -32,6 +32,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+
 #include "vilib/feature_tracker/feature_tracker_cuda_tools.h"
 #include "vilib/feature_tracker/config.h"
 #include "vilib/cuda_common.h"
@@ -649,7 +652,7 @@ __global__ void update_tracks_kernel(const int candidate_num,
         --level,d_patch_data_bx+=pyramid_patch_sizes.max_area,d_hessian_data_bx+=10) {
       const float scale = (float)(1<<level);
       const float inv_scale = 1.0f/scale;
-      const float2 ref_px_scaled = {.x = ref_px_bx.x * inv_scale, .y = ref_px_bx.y * inv_scale};
+      const float2 ref_px_scaled = make_float2(ref_px_bx.x * inv_scale, ref_px_bx.y * inv_scale);
 
       const unsigned char * img_ref = pyramid_description.data[level];
       const int img_width  = pyramid_description.desc.w[level];
